@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Water Tank Dashboard</title>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- CSS -->
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+</head>
+
+<body>
+<div class="container">
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <div class="nav-logo"><i class="fas fa-tint"></i> MauFlood</div>
+    <ul class="nav-links">
+      <li><a href="index.html"><i class="fas fa-home"></i> Home</a></li>
+      <li><a href="dashboard.html" class="active"><i class="fas fa-chart-line"></i> Dashboard</a></li>
+      <li><a href="safety.html"><i class="fas fa-shield-alt"></i> Safety</a></li>
+    </ul>
+  </nav>
+
+  <!-- HEADER -->
+  <header>
+    <h1><i class="fas fa-tint title-icon"></i> Water Tank Dashboard</h1>
+    <p class="subtitle">Real-time monitoring with drought and flood alerts</p>
+  </header>
+
+  <!-- Connection status -->
+  <div id="connectionStatus" class="connection-status status-disconnected">
+    <i class="fas fa-plug"></i> Connecting to Database...
+  </div>
+<!-- Alert History Log -->
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">
+      <i class="fas fa-history"></i> Alert History Log
+    </h2>
+    <button class="accordion-toggle"><i class="fas fa-chevron-down"></i></button>
+  </div>
+  <ul id="alertHistory" class="accordion-content" style="list-style:none;padding-left:0; max-height:0; overflow:hidden; transition:max-height 0.3s ease;"></ul>
+</div>
+
+  <!-- Alert Container -->
+  <div id="alertContainer" class="alert-container"></div>
+
+  
+  <!-- Statistics -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-value stat-normal" id="avgLevel">--</div>
+      <div class="stat-label">Average Water Level</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value stat-normal" id="minLevel">--</div>
+      <div class="stat-label">Minimum Level</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value stat-normal" id="maxLevel">--</div>
+      <div class="stat-label">Maximum Level</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value stat-normal">3</div>
+      <div class="stat-label">Monitored Tanks</div>
+    </div>
+  </div>
+
+  <!-- Dashboard Grid -->
+  <div class="dashboard-grid">
+
+    <!-- Tank 1 -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title"><i class="fas fa-water"></i> Tank 1</h2>
+        <div id="tank1Status" class="status-indicator status-normal">
+          <i class="fas fa-check-circle"></i> Normal
+        </div>
+      </div>
+      <div class="level-value level-normal" id="tank1Value">--<span class="level-unit"> L</span></div>
+      <div class="chart-container"><canvas id="chartTank1"></canvas></div>
+    </div>
+
+    <!-- Tank 2 -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title"><i class="fas fa-water"></i> Tank 2</h2>
+        <div id="tank2Status" class="status-indicator status-normal">
+          <i class="fas fa-check-circle"></i> Normal
+        </div>
+      </div>
+      <div class="level-value level-normal" id="tank2Value">--<span class="level-unit"> L</span></div>
+      <div class="chart-container"><canvas id="chartTank2"></canvas></div>
+    </div>
+
+    <!-- Tank 3 -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title"><i class="fas fa-water"></i> Tank 3</h2>
+        <div id="tank3Status" class="status-indicator status-normal">
+          <i class="fas fa-check-circle"></i> Normal
+        </div>
+      </div>
+      <div class="level-value level-normal" id="tank3Value">--<span class="level-unit"> L</span></div>
+      <div class="chart-container"><canvas id="chartTank3"></canvas></div>
+    </div>
+
+  </div>
+
+  <!-- Combined Chart -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title"><i class="fas fa-chart-line"></i> Combined Water Levels</h2>
+    </div>
+    <div class="chart-container"><canvas id="chartCombined"></canvas></div>
+    <div class="threshold-info">
+      <div class="threshold-item">
+        <div class="threshold-dot dot-drought"></div>
+        <span>Drought threshold: &lt; 500 L</span>
+      </div>
+      <div class="threshold-item">
+        <div class="threshold-dot dot-flood"></div>
+        <span>Flood threshold: &gt; 1700 L</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <p>Water Tank Monitoring System &copy; 2024 | Real-time Dashboard</p>
+  </div>
+
+</div>
+
+<script>
+/* ================= FIREBASE ================= */
+firebase.initializeApp({
+  databaseURL: "https://dissertation-e66c6-default-rtdb.firebaseio.com"
+});
+const db = firebase.database();
+
+/* ================= CONNECTION ================= */
+firebase.database().ref(".info/connected").on("value", snap => {
+  const el = document.getElementById("connectionStatus");
+  if (snap.val()) {
+    el.className = "connection-status status-connected";
+    el.innerHTML = '<i class="fas fa-plug"></i> Connected';
+  } else {
+    el.className = "connection-status status-disconnected";
+    el.innerHTML = '<i class="fas fa-plug"></i> Disconnected';
+  }
+});
+
+/* ================= THRESHOLDS ================= */
+const DROUGHT_THRESHOLD = 500;
+const FLOOD_THRESHOLD = 1700;
+
+/* ================= DATA ARRAYS ================= */
+let tank1Data = [], tank2Data = [], tank3Data = [];
+
+/* ================= CHART CREATION ================= */
+function createTankChart(ctx, color) {
+  return new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: [],
+      datasets: [{
+        label: "Level",
+        data: [],
+        borderColor: color,
+        backgroundColor: color.replace(')', ', 0.1)').replace('rgb', 'rgba'),
+        borderWidth: 3,
+        tension: 0.3,
+        fill: true,
+        pointBackgroundColor: color,
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          backgroundColor: 'rgba(44, 62, 80, 0.9)',
+          titleColor: '#fff',
+          bodyColor: '#fff',
+          borderColor: color,
+          borderWidth: 1
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          title: { display: true, text: "Time", color: '#95aac9' }
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: 'rgba(0, 0, 0, 0.05)' },
+          title: { display: true, text: "Water Level (L)", color: '#95aac9' },
+          suggestedMax: 2000
+        }
+      }
+    }
+  });
+}
+
+const chartTank1 = createTankChart(document.getElementById("chartTank1"), "rgb(52, 152, 219)");
+const chartTank2 = createTankChart(document.getElementById("chartTank2"), "rgb(46, 204, 113)");
+const chartTank3 = createTankChart(document.getElementById("chartTank3"), "rgb(155, 89, 182)");
+
+/* ================= COMBINED CHART ================= */
+const chartCombined = new Chart(document.getElementById("chartCombined"), {
+  type: "line",
+  data: {
+    labels: [],
+    datasets: [
+      {
+        label: "Tank 1",
+        data: [],
+        borderColor: "rgb(52, 152, 219)",
+        backgroundColor: "rgba(52, 152, 219, 0.1)",
+        borderWidth: 3,
+        tension: 0.3,
+        fill: true,
+        pointBackgroundColor: "rgb(52, 152, 219)",
+        pointBorderColor: "#fff",
+        pointBorderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 6
+      },
+      {
+        label: "Tank 2",
+        data: [],
+        borderColor: "rgb(46, 204, 113)",
+        backgroundColor: "rgba(46, 204, 113, 0.1)",
+        borderWidth: 3,
+        tension: 0.3,
+        fill: true,
+        pointBackgroundColor: "rgb(46, 204, 113)",
+        pointBorderColor: "#fff",
+        pointBorderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 6
+      },
+      {
+        label: "Tank 3",
+        data: [],
+        borderColor: "rgb(155, 89, 182)",
+        backgroundColor: "rgba(155, 89, 182, 0.1)",
+        borderWidth: 3,
+        tension: 0.3,
+        fill: true,
+        pointBackgroundColor: "rgb(155, 89, 182)",
+        pointBorderColor: "#fff",
+        pointBorderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 6
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      tooltip: {
+        mode: 'index',
+        intersect: false,
+        backgroundColor: 'rgba(44, 62, 80, 0.9)',
+        titleColor: '#fff',
+        bodyColor: '#fff'
+      }
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        title: { display: true, text: "Time", color: '#95aac9' }
+      },
+      y: {
+        beginAtZero: true,
+        grid: { color: 'rgba(0, 0, 0, 0.05)' },
+        title: { display: true, text: "Water Level (L)", color: '#95aac9' },
+        suggestedMax: 2000
+      }
+    }
+  }
+});
+
+/* ================= UTILITIES ================= */
+function trimData(chart) {
+  if (chart.data.labels.length > 20) {
+    chart.data.labels.shift();
+    chart.data.datasets.forEach(ds => ds.data.shift());
+  }
+}
+
+/* ================= ALERT SYSTEM ================= */
+function showAlert(message, type, tankId) {
+  const container = document.getElementById("alertContainer");
+  const history = document.getElementById("alertHistory");
+  const id = "alert-" + Date.now();
+
+  const title = type === "flood" ? "Flood Risk Alert" : "Drought Alert";
+  const icon = type === "flood"
+    ? "fas fa-exclamation-circle"
+    : "fas fa-exclamation-triangle";
+
+  // Popup toast
+  container.insertAdjacentHTML("afterbegin", `
+    <div class="alert-toast ${type}" id="${id}">
+      <div class="alert-icon"><i class="${icon}"></i></div>
+      <div class="alert-content">
+        <div class="alert-title">${title}</div>
+        <div class="alert-message">${message}</div>
+      </div>
+      <button class="alert-close" onclick="document.getElementById('${id}').remove()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+  `);
+
+  // History log
+  history.insertAdjacentHTML("afterbegin", `
+    <li style="padding:10px;border-bottom:1px solid #eee;">
+      <strong>${title}</strong> — Tank ${tankId}<br>
+      <small>${new Date().toLocaleString()}</small>
+    </li>
+  `);
+
+  setTimeout(() => {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+  }, 8000);
+}
+
+/* ================= STATUS UPDATE ================= */
+function updateStatusIndicator(tankId, value) {
+  const statusEl = document.getElementById(`tank${tankId}Status`);
+  const valueEl = document.getElementById(`tank${tankId}Value`);
+
+  if (value < DROUGHT_THRESHOLD) {
+    statusEl.className = "status-indicator status-drought";
+    valueEl.className = "level-value level-drought";
+    statusEl.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Drought';
+    showAlert(`Tank ${tankId} water level is LOW (${value} L)`, "drought", tankId);
+  }
+  else if (value > FLOOD_THRESHOLD) {
+    statusEl.className = "status-indicator status-flood";
+    valueEl.className = "level-value level-flood";
+    statusEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> Flood Risk';
+    showAlert(`Tank ${tankId} water level is HIGH (${value} L)`, "flood", tankId);
+  }
+  else {
+    statusEl.className = "status-indicator status-normal";
+    valueEl.className = "level-value level-normal";
+    statusEl.innerHTML = '<i class="fas fa-check-circle"></i> Normal';
+  }
+
+  valueEl.innerHTML = value + '<span class="level-unit"> L</span>';
+}
+
+/* ================= STATISTICS ================= */
+function updateStatistics() {
+  const all = [...tank1Data, ...tank2Data, ...tank3Data].filter(val => !isNaN(val) && val !== null && val !== undefined);
+  
+  if (all.length > 0) {
+    const avg = Math.round(all.reduce((a, b) => a + b, 0) / all.length);
+    const min = Math.min(...all);
+    const max = Math.max(...all);
+    
+    document.getElementById('avgLevel').textContent = avg + ' L';
+    document.getElementById('minLevel').textContent = min + ' L';
+    document.getElementById('maxLevel').textContent = max + ' L';
+    
+    document.getElementById('avgLevel').className = `stat-value ${getStatColor(avg)}`;
+    document.getElementById('minLevel').className = `stat-value ${getStatColor(min)}`;
+    document.getElementById('maxLevel').className = `stat-value ${getStatColor(max)}`;
+  } else {
+    document.getElementById('avgLevel').textContent = '--';
+    document.getElementById('minLevel').textContent = '--';
+    document.getElementById('maxLevel').textContent = '--';
+  }
+}
+
+function getStatColor(val) {
+  if (val < DROUGHT_THRESHOLD) return 'stat-drought';
+  if (val > FLOOD_THRESHOLD) return 'stat-flood';
+  return 'stat-normal';
+}
+
+/* ================= FIREBASE LISTENERS ================= */
+function setupTankListener(tankId, chart, dataArray, path) {
+  // First, load historical data
+  db.ref(path).limitToLast(20).once("value", snap => {
+    snap.forEach(childSnap => {
+      const data = childSnap.val();
+      if (data) {
+        const rawVal = data.value || data.waterLevel;
+        const val = parseInt(rawVal);
+        
+        if (!isNaN(val) && val !== null && val !== undefined) {
+          const ts = data.timestamp ? new Date(data.timestamp) : new Date();
+          const label = ts.toLocaleTimeString();
+          
+          chart.data.labels.push(label);
+          chart.data.datasets[0].data.push(val);
+          
+          dataArray.push(val);
+        }
+      }
+    });
+    
+    // Update the display with the last value
+    if (dataArray.length > 0) {
+      const lastVal = dataArray[dataArray.length - 1];
+      updateStatusIndicator(tankId, lastVal);
+      chart.update();
+      
+      // Update combined chart
+      for (let i = 0; i < chart.data.labels.length; i++) {
+        if (i >= chartCombined.data.labels.length) {
+          chartCombined.data.labels.push(chart.data.labels[i]);
+        }
+        if (chartCombined.data.datasets[tankId - 1].data.length <= i) {
+          chartCombined.data.datasets[tankId - 1].data.push(chart.data.datasets[0].data[i]);
+        }
+      }
+      chartCombined.update();
+      updateStatistics();
+    }
+  });
+  
+  // Then, listen for new data
+  db.ref(path).on("child_added", snap => {
+    const data = snap.val();
+    if (data) {
+      const rawVal = data.value || data.waterLevel;
+      const val = parseInt(rawVal);
+      
+      // Validate the value
+      if (isNaN(val) || val === null || val === undefined) {
+        console.warn(`Invalid data for Tank ${tankId}:`, data);
+        return;
+      }
+      
+      const ts = data.timestamp ? new Date(data.timestamp) : new Date();
+      
+      updateStatusIndicator(tankId, val);
+      
+      const label = ts.toLocaleTimeString();
+      chart.data.labels.push(label);
+      chart.data.datasets[0].data.push(val);
+      trimData(chart);
+      chart.update();
+      
+      chartCombined.data.labels.push(label);
+      chartCombined.data.datasets[tankId - 1].data.push(val);
+      trimData(chartCombined);
+      chartCombined.update();
+      
+      dataArray.push(val);
+      if (dataArray.length > 50) dataArray.shift();
+      updateStatistics();
+    }
+  });
+}
+
+setupTankListener(1, chartTank1, tank1Data, "tank1");
+setupTankListener(2, chartTank2, tank2Data, "tank2");
+setupTankListener(3, chartTank3, tank3Data, "tank3/readings");
+
+/* ================= DEMO BUTTON ================= */
+const demoBtn = document.createElement('button');
+demoBtn.innerHTML = '<i class="fas fa-vial"></i> Load Demo Data';
+demoBtn.style.cssText = `position:fixed;bottom:20px;right:20px;background:var(--primary);color:white;border:none;padding:12px 20px;border-radius:30px;font-weight:600;cursor:pointer;box-shadow:var(--box-shadow);z-index:100;display:flex;align-items:center;gap:8px;`;
+demoBtn.onclick = function() {
+  const t1 = Math.floor(Math.random() * 2000);
+  const t2 = Math.floor(Math.random() * 2000);
+  const t3 = Math.floor(Math.random() * 2000);
+  const label = new Date().toLocaleTimeString();
+
+  updateStatusIndicator(1, t1);
+  updateStatusIndicator(2, t2);
+  updateStatusIndicator(3, t3);
+
+  chartTank1.data.labels.push(label);
+  chartTank1.data.datasets[0].data.push(t1);
+  trimData(chartTank1);
+  chartTank1.update();
+
+  chartTank2.data.labels.push(label);
+  chartTank2.data.datasets[0].data.push(t2);
+  trimData(chartTank2);
+  chartTank2.update();
+
+  chartTank3.data.labels.push(label);
+  chartTank3.data.datasets[0].data.push(t3);
+  trimData(chartTank3);
+  chartTank3.update();
+
+  chartCombined.data.labels.push(label);
+  chartCombined.data.datasets[0].data.push(t1);
+  chartCombined.data.datasets[1].data.push(t2);
+  chartCombined.data.datasets[2].data.push(t3);
+  trimData(chartCombined);
+  chartCombined.update();
+
+  tank1Data.push(t1);
+  tank2Data.push(t2);
+  tank3Data.push(t3);
+  updateStatistics();
+};
+document.body.appendChild(demoBtn);
+
+// Accordion toggle for Alert History
+const accordionToggle = document.querySelector(".accordion-toggle");
+const accordionContent = document.querySelector(".accordion-content");
+
+accordionToggle.addEventListener("click", () => {
+  if (accordionContent.style.maxHeight && accordionContent.style.maxHeight !== "0px") {
+    accordionContent.style.maxHeight = "0";
+    accordionToggle.querySelector("i").style.transform = "rotate(0deg)";
+  } else {
+    accordionContent.style.maxHeight = accordionContent.scrollHeight + "px";
+    accordionToggle.querySelector("i").style.transform = "rotate(180deg)";
+  }
+});
+
+</script>
+</body>
+</html>

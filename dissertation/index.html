@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>WaterSafe | Home</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+  <!-- External CSS -->
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/map.css">
+</head>
+
+<body>
+  <div class="container">
+
+    <!-- NAVBAR -->
+    <nav class="navbar">
+      <div class="nav-logo">
+        <i class="fas fa-tint"></i> MauFlood
+      </div>
+      <ul class="nav-links">
+        <li><a href="index.html" class="active"><i class="fas fa-home"></i> Home</a></li>
+        <li><a href="dashboard.html"><i class="fas fa-chart-line"></i> Dashboard</a></li>
+        <li><a href="safety.html"><i class="fas fa-shield-alt"></i> Safety</a></li>
+      </ul>
+    </nav>
+
+    <!-- HERO -->
+    <section class="hero">
+      <h1>Smart Water Tank Monitoring System</h1>
+      <p>
+        Monitor water levels in real time, receive drought and flood alerts,
+        and ensure safe water management using IoT and cloud technology.
+      </p>
+
+      <div class="hero-buttons">
+        <a href="dashboard.html" class="btn btn-primary">
+          <i class="fas fa-chart-line"></i> View Dashboard
+        </a>
+        <a href="safety.html" class="btn btn-secondary">
+          <i class="fas fa-shield-alt"></i> Safety Guidelines
+        </a>
+      </div>
+    </section>
+
+    <!-- MAP SECTION -->
+    <section class="map-section">
+      <h2>Our Location: Mauritius</h2>
+      <p>Visualize water tank locations across Mauritius.</p>
+
+      <div id="map"></div>
+    </section>
+
+    <!-- FOOTER -->
+    <div class="footer">
+      Water Tank Monitoring System © 2025
+    </div>
+
+  </div>
+
+ <!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+  // Initialize map (NO zoom level)
+  var map = L.map('map');
+
+  // Add OpenStreetMap tiles
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap'
+  }).addTo(map);
+
+  // Set map to show full Mauritius
+  var mauritiusBounds = [
+    [-20.552, 57.225], // South-West
+    [-19.95, 57.815]   // North-East
+  ];
+
+  // Auto zoom to fit Mauritius (FULL MAP)
+  map.fitBounds(mauritiusBounds);
+
+  // Lock map inside Mauritius
+  map.setMaxBounds(mauritiusBounds);
+  map.on('drag', function () {
+    map.panInsideBounds(mauritiusBounds, { animate: false });
+  });
+
+  // Marker function
+  function createIcon(status) {
+    return L.divIcon({
+      className: 'leaflet-marker-icon ' + status,
+      iconSize: [20, 20]
+    });
+  }
+
+  // Locations
+  var locations = [
+    { lat: -20.1614, lng: 57.4983, status: 'normal', popup: 'Water Tank 1: Normal' },
+    { lat: -20.1897, lng: 57.7144, status: 'flood blinking', popup: 'Water Tank 2: Flood Risk' },
+    { lat: -20.42872, lng: 57.57494, status: 'drought blinking', popup: 'Water Tank 3: Drought Risk' }
+  ];
+
+  // Add markers
+  locations.forEach(function (loc) {
+    L.marker([loc.lat, loc.lng], { icon: createIcon(loc.status) })
+      .addTo(map)
+      .bindPopup(loc.popup);
+  });
+</script>
+
+</body>
+</html>
