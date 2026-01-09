@@ -1,45 +1,44 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>WaterSafe | Home</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<title>MauFlood | Home</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Font Awesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-  <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
-  <!-- External CSS -->
-  <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/map.css">
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+<!-- External CSS -->
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/map.css">
 </head>
 
 <body>
-  <div class="container">
+<div class="container">
 
-    <!-- NAVBAR -->
-    <nav class="navbar">
-      <div class="nav-logo">
-        <i class="fas fa-tint"></i> MauFlood
-      </div>
-      <ul class="nav-links">
-        <li><a href="index.html" class="active"><i class="fas fa-home"></i> Home</a></li>
-        <li><a href="dashboard.html"><i class="fas fa-chart-line"></i> Dashboard</a></li>
-        <li><a href="safety.html"><i class="fas fa-shield-alt"></i> Safety</a></li>
-      </ul>
-    </nav>
+<!-- NAVBAR -->
+<nav class="navbar">
+  <div class="nav-logo"><i class="fas fa-tint"></i> MauFlood</div>
+  <ul class="nav-links">
+    <li><a href="index.html" class="active"><i class="fas fa-home"></i> Home</a></li>
+    <li><a href="dashboard.html"><i class="fas fa-chart-line"></i> Dashboard</a></li>
+    <li><a href="safety.html"><i class="fas fa-shield-alt"></i> Safety</a></li>
+  </ul>
+</nav>
 
-    <!-- HERO -->
-    <section class="hero">
-      <h1>Smart Water Tank Monitoring System</h1>
-      <p>
-        Monitor water levels in real time, receive drought and flood alerts,
-        and ensure safe water management using IoT and cloud technology.
-      </p>
-
-      <div class="hero-buttons">
+<!-- HERO -->
+<section class="hero">
+  <h1>Smart Water Tank Monitoring System</h1>
+  <p>Monitor water levels in real time and receive flood or drought alerts.</p>
+  
+  <div class="hero-buttons">
         <a href="dashboard.html" class="btn btn-primary">
           <i class="fas fa-chart-line"></i> View Dashboard
         </a>
@@ -47,72 +46,98 @@
           <i class="fas fa-shield-alt"></i> Safety Guidelines
         </a>
       </div>
-    </section>
+</section>
 
-    <!-- MAP SECTION -->
-    <section class="map-section">
-      <h2>Our Location: Mauritius</h2>
-      <p>Visualize water tank locations across Mauritius.</p>
+<!-- MAP -->
+<section class="map-section">
+  <h2>Water Tank Locations – Mauritius</h2>
+  <div id="map"></div>
+</section>
 
-      <div id="map"></div>
-    </section>
+<div class="footer">Water Tank Monitoring System © 2025</div>
+</div>
 
-    <!-- FOOTER -->
-    <div class="footer">
-      Water Tank Monitoring System © 2025
-    </div>
-
-  </div>
-
- <!-- Leaflet JS -->
+<!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
-  // Initialize map (NO zoom level)
-  var map = L.map('map');
+/* ================= FIREBASE ================= */
+firebase.initializeApp({
+  apiKey: "AIzaSyBKgKMlBlO_BSUiZQzufg1sHCxK6N6jyDI",
+  authDomain: "dissertation-e66c6.firebaseapp.com",
+  databaseURL: "https://dissertation-e66c6-default-rtdb.firebaseio.com",
+  projectId: "dissertation-e66c6"
+});
 
-  // Add OpenStreetMap tiles
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '© OpenStreetMap'
-  }).addTo(map);
+const db = firebase.database();
 
-  // Set map to show full Mauritius
-  var mauritiusBounds = [
-    [-20.552, 57.225], // South-West
-    [-19.95, 57.815]   // North-East
-  ];
+/* ================= THRESHOLDS ================= */
+const DROUGHT = 500;
+const FLOOD = 1500;
 
-  // Auto zoom to fit Mauritius (FULL MAP)
-  map.fitBounds(mauritiusBounds);
+/* ================= MAP ================= */
+var map = L.map('map');
 
-  // Lock map inside Mauritius
-  map.setMaxBounds(mauritiusBounds);
-  map.on('drag', function () {
-    map.panInsideBounds(mauritiusBounds, { animate: false });
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19,
+  attribution: '© OpenStreetMap'
+}).addTo(map);
+
+var mauritiusBounds = [
+  [-20.552, 57.225],
+  [-19.95, 57.815]
+];
+map.fitBounds(mauritiusBounds);
+map.setMaxBounds(mauritiusBounds);
+
+/* ================= ICON ================= */
+function createIcon(status) {
+  return L.divIcon({
+    className: 'marker ' + status,
+    iconSize: [18, 18]
   });
+}
 
-  // Marker function
-  function createIcon(status) {
-    return L.divIcon({
-      className: 'leaflet-marker-icon ' + status,
-      iconSize: [20, 20]
+/* ================= STATUS LOGIC ================= */
+function getStatus(level) {
+  if (level === null || level === undefined) return "no-data";
+  if (level <= DROUGHT) return "drought blinking";
+  if (level < FLOOD) return "normal";
+  return "flood blinking";
+}
+
+/* ================= LOCATIONS ================= */
+var locations = [
+  { node: 1, lat: -20.1614, lng: 57.4983, marker: null },
+  { node: 2, lat: -20.1897, lng: 57.7144, marker: null },
+  { node: 3, lat: -20.42872, lng: 57.57494, marker: null }
+];
+
+/* ================= MARKERS ================= */
+locations.forEach(loc => {
+  loc.marker = L.marker([loc.lat, loc.lng], {
+    icon: createIcon("no-data")
+  }).addTo(map).bindPopup(`Tank ${loc.node}: No data`);
+
+  db.ref(`tank${loc.node}/readings`)
+    .limitToLast(1)
+    .on("value", snap => {
+
+      if (!snap.exists()) {
+        loc.marker.setIcon(createIcon("no-data"));
+        loc.marker.setPopupContent(`Tank ${loc.node}: No data`);
+        return;
+      }
+
+      snap.forEach(child => {
+        const level = child.val().waterLevel;
+        const status = getStatus(level);
+
+        loc.marker.setIcon(createIcon(status));
+        loc.marker.setPopupContent(`Tank ${loc.node}: ${level} L`);
+      });
     });
-  }
-
-  // Locations
-  var locations = [
-    { lat: -20.1614, lng: 57.4983, status: 'normal', popup: 'Water Tank 1: Normal' },
-    { lat: -20.1897, lng: 57.7144, status: 'flood blinking', popup: 'Water Tank 2: Flood Risk' },
-    { lat: -20.42872, lng: 57.57494, status: 'drought blinking', popup: 'Water Tank 3: Drought Risk' }
-  ];
-
-  // Add markers
-  locations.forEach(function (loc) {
-    L.marker([loc.lat, loc.lng], { icon: createIcon(loc.status) })
-      .addTo(map)
-      .bindPopup(loc.popup);
-  });
+});
 </script>
 
 </body>
