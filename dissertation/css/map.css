@@ -15,43 +15,56 @@
   color: #555;
 }
 
-/* Leaflet map container must have a height */
+/* Leaflet map container */
 #map {
   width: 100%;
   max-width: 1000px;
-  height: 500px; /* <-- essential */
+  height: 500px;
   margin: 0 auto;
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 }
 
-/* Marker animation styles */
+/* ================= MARKERS ================= */
+.marker {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: grey;
+  opacity: 0.7;
+}
+
+/* NORMAL (no blinking) */
 .normal {
   background-color: green;
-  border-radius: 50%;
-  width: 20px;
-  height: 20px;
+  opacity: 1;
 }
 
-.flood.blinking {
+/* FLOOD (blinking red) */
+.flood {
   background-color: red;
-  border-radius: 50%;
-  width: 20px;
-  height: 20px;
-  animation: blink 1s infinite;
 }
 
-.drought.blinking {
+/* DROUGHT (blinking yellow) */
+.drought {
   background-color: yellow;
-  border-radius: 50%;
-  width: 20px;
-  height: 20px;
+}
+
+/* NO DATA */
+.no-data {
+  background-color: grey;
+  opacity: 0.5;
+}
+
+/* BLINKING */
+.blinking {
   animation: blink 1s infinite;
 }
 
 /* Blink animation */
 @keyframes blink {
-  0%, 50%, 100% { opacity: 1; }
-  25%, 75% { opacity: 0; }
+  0%   { opacity: 1; }
+  50%  { opacity: 0.3; }
+  100% { opacity: 1; }
 }
