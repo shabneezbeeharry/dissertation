@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Water Tank Dashboard</title>
+  <title>MauFlood Dashboard</title>
 
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -17,6 +17,18 @@
 
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/dashboard.css">
+
+  <style>
+    /* Alerts styling */
+    .alert-toast {
+      background:white; padding:10px; margin:5px; border-left:5px solid; box-shadow:0 0 5px rgba(0,0,0,0.2);
+      position:relative; animation:fadein 0.5s;
+    }
+    .alert-drought{border-color:orange;}
+    .alert-flood-risk{border-color:blue;}
+    .alert-flood{border-color:red;}
+    @keyframes fadein{from{opacity:0;} to{opacity:1;}}
+  </style>
 </head>
 
 <body>
@@ -47,7 +59,7 @@
       <h2><i class="fas fa-history"></i> Alert History</h2>
       <button class="accordion-toggle"><i class="fas fa-chevron-down"></i></button>
     </div>
-    <ul id="alertHistory" class="accordion-content"></ul>
+    <ul id="alertHistory" class="accordion-content" style="list-style:none; padding-left:0; max-height:0; overflow:hidden; transition:max-height 0.3s ease;"></ul>
   </div>
 
   <div id="alertContainer"></div>
@@ -93,65 +105,162 @@
   </div>
 
 </div>
-
 <script>
+/* ================= FIREBASE INIT ================= */
 firebase.initializeApp({
-  databaseURL: "https://dissertation-e66c6-default-rtdb.firebaseio.com"
+  apiKey: "AIzaSyBKgKMlBlO_BSUiZQzufg1sHCxK6N6jyDI",
+  authDomain: "dissertation-e66c6.firebaseapp.com",
+  databaseURL: "https://dissertation-e66c6-default-rtdb.firebaseio.com",
+  projectId: "dissertation-e66c6",
+  storageBucket: "dissertation-e66c6.firebasestorage.app",
+  messagingSenderId: "72509263190",
+  appId: "1:72509263190:web:33ce245b3bcb85c03e5af7"
 });
+
 const db = firebase.database();
 
-firebase.database().ref(".info/connected").on("value", s => {
-  document.getElementById("connectionStatus").innerHTML =
-    s.val() ? "🟢 Connected" : "🔴 Disconnected";
+/* ================= CONNECTION ================= */
+firebase.database().ref(".info/connected").on("value", snap => {
+  const el = document.getElementById("connectionStatus");
+  if (snap.val()) {
+    el.innerHTML = '<i class="fas fa-check-circle"></i> Connected to Firebase';
+    el.className = "connection-status status-connected";
+  } else {
+    el.innerHTML = '<i class="fas fa-times-circle"></i> Disconnected';
+    el.className = "connection-status status-disconnected";
+  }
 });
 
-const DROUGHT = 100;
-const FLOOD = 320;
+/* ================= THRESHOLDS ================= */
+const DROUGHT = 500;
+const FLOOD = 1500;
 
-function createChart(ctx, color) {
-  return new Chart(ctx, {
-    type: 'line',
-    data: { labels: [], datasets: [{ data: [], borderColor: color, fill:false }] },
-    options: { responsive:true }
+/* ================= STATS TRACKING ================= */
+const currentLevels = {1: null, 2: null, 3: null};
+
+function updateStats() {
+  const levels = Object.values(currentLevels).filter(v => v !== null);
+  if (levels.length === 0) return;
+  
+  const avg = (levels.reduce((a,b) => a+b, 0) / levels.length).toFixed(0);
+  const min = Math.min(...levels);
+  const max = Math.max(...levels);
+  
+  document.getElementById("avgLevel").innerText = avg + " L";
+  document.getElementById("minLevel").innerText = min + " L";
+  document.getElementById("maxLevel").innerText = max + " L";
+}
+
+/* ================= CHARTS ================= */
+function makeChart(id, color) {
+  return new Chart(document.getElementById(id), {
+    type: "line",
+    data: { labels: [], datasets: [{ data: [], borderColor: color, fill: false, tension: 0.1 }] },
+    options: { 
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { display: false }
+      }
+    }
   });
 }
 
-const chart1 = createChart(chartTank1, 'blue');
-const chart2 = createChart(chartTank2, 'green');
-const chart3 = createChart(chartTank3, 'purple');
+const chart1 = makeChart("chartTank1", "#3498db");
+const chart2 = makeChart("chartTank2", "#2ecc71");
+const chart3 = makeChart("chartTank3", "#9b59b6");
 
-const chartCombined = new Chart(chartCombined, {
-  type:'line',
-  data:{ labels:[], datasets:[
-    {label:'Node1',data:[],borderColor:'blue'},
-    {label:'Node2',data:[],borderColor:'green'},
-    {label:'Node3',data:[],borderColor:'purple'}
-  ]}
+const chartCombined = new Chart(document.getElementById("chartCombined"), {
+  type: "line",
+  data: {
+    labels: [],
+    datasets: [
+      { label:"Node 1 - Port Louis", data:[], borderColor:"#3498db", fill: false, tension: 0.1 },
+      { label:"Node 2 - Flacq", data:[], borderColor:"#2ecc71", fill: false, tension: 0.1 },
+      { label:"Node 3 - Riviere du poste", data:[], borderColor:"#9b59b6", fill: false, tension: 0.1 }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: true
+  }
 });
 
-function updateUI(id, val) {
-  document.getElementById(`tank${id}Value`).innerHTML = val + " L";
-  let status = "SAFE";
-  if (val < DROUGHT) status = "DROUGHT";
-  if (val > FLOOD) status = "FLOOD";
-  document.getElementById(`tank${id}Status`).innerText = status;
+/* ================= ALERTS ================= */
+const lastAlert = {1:null,2:null,3:null};
+
+function showAlert(message, type, node) {
+  const container = document.getElementById("alertContainer");
+  const history = document.getElementById("alertHistory");
+  const id = "alert-" + Date.now();
+
+  container.insertAdjacentHTML("afterbegin", `
+    <div class="alert-toast alert-${type}" id="${id}">
+      <strong>${type.toUpperCase()} – Node ${node}</strong> – ${message}
+    </div>
+  `);
+
+  history.insertAdjacentHTML("afterbegin", `
+    <li style="padding:5px;border-bottom:1px solid #eee;">
+      <strong>${type.toUpperCase()}</strong> – Node ${node} <small>${new Date().toLocaleTimeString()}</small>
+    </li>
+  `);
+
+  setTimeout(()=>{ document.getElementById(id)?.remove(); }, 8000);
 }
 
-function listenNode(id, chart, datasetIndex) {
-  db.ref(`floodData/node${id}`).on("value", snap => {
-    const d = snap.val();
-    if (!d) return;
-    const v = d.waterLevel;
-    const t = new Date().toLocaleTimeString();
+/* ================= UI UPDATE ================= */
+function updateUI(node, level) {
+  currentLevels[node] = level;
+  updateStats();
+  
+  document.getElementById(`tank${node}Value`).innerText = level + " L";
+  let status = "SAFE";
+  let alertType = null;
+  let statusColor = "#27ae60";
 
-    updateUI(id, v);
+  if(level <= DROUGHT) { 
+    status = "DROUGHT"; 
+    alertType = "drought"; 
+    statusColor = "#f39c12";
+  }
+  else if(level >= FLOOD) { 
+    status = "FLOOD"; 
+    alertType = "flood"; 
+    statusColor = "#e74c3c";
+  }
 
-    chart.data.labels.push(t);
-    chart.data.datasets[0].data.push(v);
+  const statusEl = document.getElementById(`tank${node}Status`);
+  statusEl.innerText = status;
+  statusEl.style.backgroundColor = statusColor;
+  statusEl.style.color = "white";
+
+  // Trigger alert only if status changed
+  if(alertType && lastAlert[node] !== alertType) {
+    showAlert(`Water level is ${level} L`, alertType, node);
+    lastAlert[node] = alertType;
+  } else if(!alertType) {
+    lastAlert[node] = null;
+  }
+}
+
+/* ================= FIREBASE LISTENERS ================= */
+function listenNode(node, chart, idx) {
+  db.ref(`tank${node}/readings`).limitToLast(20).on("child_added", snap => {
+    const data = snap.val();
+    if(!data || data.waterLevel === undefined) return;
+
+    const level = Number(data.waterLevel);
+    const time = new Date().toLocaleTimeString();
+
+    updateUI(node, level);
+
+    chart.data.labels.push(time);
+    chart.data.datasets[0].data.push(level);
     chart.update();
 
-    chartCombined.data.labels.push(t);
-    chartCombined.data.datasets[datasetIndex].data.push(v);
+    chartCombined.data.labels.push(time);
+    chartCombined.data.datasets[idx].data.push(level);
     chartCombined.update();
   });
 }
@@ -159,6 +268,19 @@ function listenNode(id, chart, datasetIndex) {
 listenNode(1, chart1, 0);
 listenNode(2, chart2, 1);
 listenNode(3, chart3, 2);
+
+/* ================= ACCORDION ================= */
+const acc = document.querySelector(".accordion-toggle");
+const accContent = document.querySelector(".accordion-content");
+acc.addEventListener("click", ()=>{
+  if(accContent.style.maxHeight && accContent.style.maxHeight != "0px"){
+    accContent.style.maxHeight = "0";
+    acc.querySelector("i").style.transform = "rotate(0deg)";
+  } else {
+    accContent.style.maxHeight = accContent.scrollHeight + "px";
+    acc.querySelector("i").style.transform = "rotate(180deg)";
+  }
+});
 </script>
 
 </body>
