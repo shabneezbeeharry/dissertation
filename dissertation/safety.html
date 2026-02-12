@@ -102,7 +102,19 @@
 			</p>
 			<p style="margin-top:10px;font-size:0.9em;">
 			  Shelters are activated by authorities during emergencies.
-			</p>
+			  </p>
+			    <h2><i class="fas fa-people-roof"></i> Nearby Shelters</h2>
+    <p id="distance">Click a shelter to calculate distance.</p>
+
+    <button class="shelter-btn" onclick="handleShelter('portlouis')">Port Louis</button>
+    <button class="shelter-btn" onclick="handleShelter('flacq')">Flacq</button>
+    <button class="shelter-btn" onclick="handleShelter('riviere')">Rivière du Poste</button>
+    
+    <p>
+      <button class="shelter-btn" id="directions-btn" style="display:none;" onclick="openDirections()">
+        Open Directions in Google Maps
+      </button>
+    </p>
 		  </div>
 
 		  <!-- MAP -->
@@ -132,5 +144,59 @@
 		  </div>
 
 		</div>
+		
+<script>
+  // Shelter Coordinates
+  const shelters = {
+    portlouis: { lat: -20.1609, lng: 57.5012, name: "Port Louis Shelter" },
+    flacq: { lat: -20.1903, lng: 57.7142, name: "Flacq Shelter" },
+    riviere: { lat: -20.2745, lng: 57.6072, name: "Rivière du Poste Shelter" }
+  };
+
+  function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+
+    const a =
+      Math.sin(dLat/2)**2 +
+      Math.cos(lat1 * Math.PI / 180) *
+      Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon/2)**2;
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  function handleShelter(key) {
+    const shelter = shelters[key];
+    const output = document.getElementById("distance");
+
+    if (!navigator.geolocation) {
+      output.innerText = "Geolocation not supported.";
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      function(position) {
+        const userLat = position.coords.latitude;
+        const userLng = position.coords.longitude;
+
+        const distance = calculateDistance(userLat, userLng, shelter.lat, shelter.lng);
+
+        output.innerText = `${shelter.name} is ${distance.toFixed(2)} km away from you.`;
+
+        // Open Google Maps directions in new tab
+        window.open(
+          `https://www.google.com/maps/dir/?api=1&destination=${shelter.lat},${shelter.lng}`,
+          "_blank"
+        );
+      },
+      function() {
+        output.innerText = "Please allow location access.";
+      }
+    );
+  }
+</script>
 	</body>
 </html>
