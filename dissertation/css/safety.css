@@ -37,24 +37,19 @@
       margin-top: 15px;
     }
 
-    ..emergency-box {
-  background: #f8f9fa;
-  padding: 18px;
-  border-radius: 14px;
-  text-align: center;
-  font-weight: 600;
-  text-decoration: none;   /* removes underline */
-  color: inherit;          /* keeps text color same */
-  display: block;
-  transition: 0.3s ease;
-  cursor: pointer;
-}
+    .emergency-box {
+      background: #f8f9fa;
+      padding: 18px;
+      border-radius: 14px;
+      text-align: center;
+      font-weight: 600;
+    }
 
-.emergency-box:hover {
-  background: #e9ecef;
-  transform: translateY(-3px);
-}
-
+    .emergency-box i {
+      font-size: 26px;
+      margin-bottom: 8px;
+      display: block;
+    }
 
     .map-container {
       margin-top: 20px;
