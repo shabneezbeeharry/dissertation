@@ -1,144 +1,148 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>MauFlood | Home</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<head>
+		<meta charset="UTF-8">
+		<title>MauFlood | Home</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- Font Awesome -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+		<!-- Font Awesome -->
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-<!-- Leaflet CSS -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+		<!-- Leaflet CSS -->
+		<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+		<!-- Firebase -->
+		<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+		<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
-<!-- External CSS -->
-<link rel="stylesheet" href="css/style.css">
-<link rel="stylesheet" href="css/map.css">
-</head>
+		<!-- External CSS -->
+		<link rel="stylesheet" href="css/style.css">
+		<link rel="stylesheet" href="css/map.css">
+	</head>
 
-<body>
-<div class="container">
+	<body>
+		<div class="container">
 
-<!-- NAVBAR -->
-<nav class="navbar">
-  <div class="nav-logo"><i class="fas fa-tint"></i> MauFlood</div>
-  <ul class="nav-links">
-    <li><a href="index.html" class="active"><i class="fas fa-home"></i> Home</a></li>
-    <li><a href="dashboard.html"><i class="fas fa-chart-line"></i> Dashboard</a></li>
-    <li><a href="safety.html"><i class="fas fa-shield-alt"></i> Safety</a></li>
-  </ul>
-</nav>
+		<!-- NAVBAR -->
+		<nav class="navbar">
+		  <div class="nav-logo"><i class="fas fa-tint"></i> MauFlood</div>
+		  <ul class="nav-links">
+			<li><a href="index.html" class="active"><i class="fas fa-home"></i> Home</a></li>
+			<li><a href="dashboard.html"><i class="fas fa-chart-line"></i> Dashboard</a></li>
+			<li><a href="safety.html"><i class="fas fa-shield-alt"></i> Safety</a></li>
+		  </ul>
+		</nav>
 
-<!-- HERO -->
-<section class="hero">
-  <h1>Smart Water Tank Monitoring System</h1>
-  <p>Monitor water levels in real time and receive flood or drought alerts.</p>
-  
-  <div class="hero-buttons">
-        <a href="dashboard.html" class="btn btn-primary">
-          <i class="fas fa-chart-line"></i> View Dashboard
-        </a>
-        <a href="safety.html" class="btn btn-secondary">
-          <i class="fas fa-shield-alt"></i> Safety Guidelines
-        </a>
-      </div>
-</section>
+		<!-- HERO -->
+		<section class="hero">
+		  <h1>Smart Water Tank Monitoring System</h1>
+		  <p>Monitor water levels in real time and receive flood or drought alerts.</p>
+		  
+		  <div class="hero-buttons">
+				<a href="dashboard.html" class="btn btn-primary">
+				  <i class="fas fa-chart-line"></i> View Dashboard
+				</a>
+				<a href="safety.html" class="btn btn-secondary">
+				  <i class="fas fa-shield-alt"></i> Safety Guidelines
+				</a>
+			  </div>
+		</section>
 
-<!-- MAP -->
-<section class="map-section">
-  <h2>Water Tank Locations – Mauritius</h2>
-  <div id="map"></div>
-</section>
+		<!-- MAP -->
+		<section class="map-section">
+		  <h2>Water Tank Locations – Mauritius</h2>
+		  <div id="map"></div>
+		</section>
 
-<div class="footer">Water Tank Monitoring System © 2025</div>
-</div>
+		<div class="footer">Disclaimer:
+		This system provides alerts based on sensor data and is intended
+		for informational purposes only. Always follow official authorities'
+		instructions during emergencies.
+		Emergency: NEOC 8996 | Police 999 | Ambulance 114</div>
+		</div>
 
-<!-- Leaflet JS -->
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+		<!-- Leaflet JS -->
+		<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-<script>
-/* ================= FIREBASE ================= */
-firebase.initializeApp({
-  apiKey: "AIzaSyBKgKMlBlO_BSUiZQzufg1sHCxK6N6jyDI",
-  authDomain: "dissertation-e66c6.firebaseapp.com",
-  databaseURL: "https://dissertation-e66c6-default-rtdb.firebaseio.com",
-  projectId: "dissertation-e66c6"
-});
+		<script>
+		/* ================= FIREBASE ================= */
+		firebase.initializeApp({
+		  apiKey: "AIzaSyBKgKMlBlO_BSUiZQzufg1sHCxK6N6jyDI",
+		  authDomain: "dissertation-e66c6.firebaseapp.com",
+		  databaseURL: "https://dissertation-e66c6-default-rtdb.firebaseio.com",
+		  projectId: "dissertation-e66c6"
+		});
 
-const db = firebase.database();
+		const db = firebase.database();
 
-/* ================= THRESHOLDS ================= */
-const DROUGHT = 500;
-const FLOOD = 1500;
+		/* ================= THRESHOLDS ================= */
+		const DROUGHT = 500;
+		const FLOOD = 1500;
 
-/* ================= MAP ================= */
-var map = L.map('map');
+		/* ================= MAP ================= */
+		var map = L.map('map');
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 19,
-  attribution: '© OpenStreetMap'
-}).addTo(map);
+		L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+		  maxZoom: 19,
+		  attribution: '© OpenStreetMap'
+		}).addTo(map);
 
-var mauritiusBounds = [
-  [-20.552, 57.225],
-  [-19.95, 57.815]
-];
-map.fitBounds(mauritiusBounds);
-map.setMaxBounds(mauritiusBounds);
+		var mauritiusBounds = [
+		  [-20.552, 57.225],
+		  [-19.95, 57.815]
+		];
+		map.fitBounds(mauritiusBounds);
+		map.setMaxBounds(mauritiusBounds);
 
-/* ================= ICON ================= */
-function createIcon(status) {
-  return L.divIcon({
-    className: 'marker ' + status,
-    iconSize: [18, 18]
-  });
-}
+		/* ================= ICON ================= */
+		function createIcon(status) {
+		  return L.divIcon({
+			className: 'marker ' + status,
+			iconSize: [18, 18]
+		  });
+		}
 
-/* ================= STATUS LOGIC ================= */
-function getStatus(level) {
-  if (level === null || level === undefined) return "no-data";
-  if (level <= DROUGHT) return "drought blinking";
-  if (level < FLOOD) return "normal";
-  return "flood blinking";
-}
+		/* ================= STATUS LOGIC ================= */
+		function getStatus(level) {
+		  if (level === null || level === undefined) return "no-data";
+		  if (level <= DROUGHT) return "drought blinking";
+		  if (level < FLOOD) return "normal";
+		  return "flood blinking";
+		}
 
-/* ================= LOCATIONS ================= */
-var locations = [
-  { node: 1, lat: -20.1614, lng: 57.4983, marker: null },
-  { node: 2, lat: -20.1897, lng: 57.7144, marker: null },
-  { node: 3, lat: -20.42872, lng: 57.57494, marker: null }
-];
+		/* ================= LOCATIONS ================= */
+		var locations = [
+		  { node: 1, lat: -20.1614, lng: 57.4983, marker: null },
+		  { node: 2, lat: -20.1897, lng: 57.7144, marker: null },
+		  { node: 3, lat: -20.42872, lng: 57.57494, marker: null }
+		];
 
-/* ================= MARKERS ================= */
-locations.forEach(loc => {
-  loc.marker = L.marker([loc.lat, loc.lng], {
-    icon: createIcon("no-data")
-  }).addTo(map).bindPopup(`Tank ${loc.node}: No data`);
+		/* ================= MARKERS ================= */
+		locations.forEach(loc => {
+		  loc.marker = L.marker([loc.lat, loc.lng], {
+			icon: createIcon("no-data")
+		  }).addTo(map).bindPopup(`Tank ${loc.node}: No data`);
 
-  db.ref(`tank${loc.node}/readings`)
-    .limitToLast(1)
-    .on("value", snap => {
+		  db.ref(`tank${loc.node}/readings`)
+			.limitToLast(1)
+			.on("value", snap => {
 
-      if (!snap.exists()) {
-        loc.marker.setIcon(createIcon("no-data"));
-        loc.marker.setPopupContent(`Tank ${loc.node}: No data`);
-        return;
-      }
+			  if (!snap.exists()) {
+				loc.marker.setIcon(createIcon("no-data"));
+				loc.marker.setPopupContent(`Tank ${loc.node}: No data`);
+				return;
+			  }
 
-      snap.forEach(child => {
-        const level = child.val().waterLevel;
-        const status = getStatus(level);
+			  snap.forEach(child => {
+				const level = child.val().waterLevel;
+				const status = getStatus(level);
 
-        loc.marker.setIcon(createIcon(status));
-        loc.marker.setPopupContent(`Tank ${loc.node}: ${level} L`);
-      });
-    });
-});
-</script>
+				loc.marker.setIcon(createIcon(status));
+				loc.marker.setPopupContent(`Tank ${loc.node}: ${level} L`);
+			  });
+			});
+		});
+		</script>
 
-</body>
+	</body>
 </html>
